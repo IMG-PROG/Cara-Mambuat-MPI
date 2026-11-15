@@ -1,0 +1,410 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Demo MPI Malaikat</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap">
+<style>
+/* Layout: sticky tab bar (Hasil MPI / Alur Pembuatan), one centered column, one screen at a time */
+:root{
+  --bg:#ffffff; --surface:#f3f8fc; --fg:#1b2a38; --muted:#5b6b7a;
+  --orange:#f26b1d; --orange-ink:#ffffff; --sky:#d9edfa; --sky-ink:#14507a;
+  --line:#d5e3ee; --ok:#1f8a4c; --ok-bg:#e1f5e9; --bad:#c0392b; --bad-bg:#fbe5e1;
+  --font:'Montserrat',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1a24; --surface:#17263a; --fg:#eaf2f9; --muted:#9db0c2; --orange:#ff8a45; --orange-ink:#1a1008;
+  --sky:#1c3b55; --sky-ink:#bfe3fb; --line:#29415a; --ok:#5fd493; --ok-bg:#143726; --bad:#ff8f80; --bad-bg:#40201c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1a24; --surface:#17263a; --fg:#eaf2f9; --muted:#9db0c2; --orange:#ff8a45; --orange-ink:#1a1008;
+  --sky:#1c3b55; --sky-ink:#bfe3fb; --line:#29415a; --ok:#5fd493; --ok-bg:#143726; --bad:#ff8f80; --bad-bg:#40201c; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:760px;margin:0 auto}
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);display:flex;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+nav.tabs button{flex:1;font:inherit;font-weight:600;font-size:14px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer}
+nav.tabs button[aria-selected="true"]{background:var(--orange);color:var(--orange-ink);border-color:var(--orange)}
+button:focus-visible,summary:focus-visible{outline:3px solid var(--sky-ink);outline-offset:2px}
+h1,h2,h3{text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:clamp(28px,6vw,40px);font-weight:800}
+h2{font-size:22px;font-weight:800}
+h3{font-size:16px;font-weight:600}
+p{margin:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--orange)}
+.btn{font:inherit;font-weight:600;padding:13px 22px;border-radius:12px;border:0;background:var(--orange);color:var(--orange-ink);cursor:pointer;font-size:16px}
+.btn.alt{background:var(--sky);color:var(--sky-ink)}
+.btn:active{transform:translateY(1px)}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* MPI */
+.bar{display:flex;align-items:center;gap:12px;padding:14px 0}
+.track{flex:1;height:10px;background:var(--sky);border-radius:99px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--orange);transition:width .35s}
+.stars{font-weight:800;color:var(--orange);font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
+.hero{background:var(--sky);border-radius:20px;padding:32px 24px;margin-top:8px}
+.hero h1{color:var(--sky-ink)}
+.hero p{color:var(--sky-ink);margin:12px 0 20px;max-width:46ch}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.card{font:inherit;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;color:var(--fg);cursor:pointer;min-height:120px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card .nm{font-weight:800;font-size:18px}
+.card .hint{font-size:13px;color:var(--muted)}
+.card.open{background:var(--bg);border-color:var(--orange)}
+.card.open .nm{color:var(--orange)}
+.card .tugas{font-size:14px}
+.opts{display:grid;gap:10px}
+.opt{font:inherit;text-align:left;padding:14px 16px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer;font-size:16px}
+.opt:hover:not(:disabled){border-color:var(--orange)}
+.opt.ok{background:var(--ok-bg);border-color:var(--ok)}
+.opt.bad{background:var(--bad-bg);border-color:var(--bad)}
+.opt:disabled{cursor:default}
+.fb{padding:14px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:15px}
+.big{font-size:64px;font-weight:800;color:var(--orange);line-height:1;font-variant-numeric:tabular-nums}
+/* Cara buat */
+.step{border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.step summary{cursor:pointer;padding:16px;font-weight:600;list-style:none;display:flex;gap:12px;align-items:center}
+.step summary::-webkit-details-marker{display:none}
+.step .n{width:32px;height:32px;border-radius:50%;background:var(--orange);color:var(--orange-ink);display:grid;place-items:center;font-weight:800;flex:none}
+.step .body{padding:0 16px 18px;display:flex;flex-direction:column;gap:12px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:460px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--sky);color:var(--sky-ink)}
+pre{margin:0;white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;font-size:13px;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace}
+.chk{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:15px}
+.chk input{width:20px;height:20px;margin-top:2px;accent-color:var(--orange);flex:none}
+.note{font-size:14px;color:var(--muted)}
+.vid{width:100%;max-width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;display:block}
+.lyr{display:flex;flex-direction:column;gap:6px}
+.lyr .sec{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--orange);margin-top:10px}
+.lyr .ln{padding:10px 14px;border-radius:10px;color:var(--muted);font-size:17px;transition:background .2s,color .2s}
+.lyr .ln.on{background:var(--orange);color:var(--orange-ink);font-weight:800}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<nav class="tabs" role="tablist">
+  <button role="tab" id="t-mpi" aria-selected="true">1. Hasil MPI (coba)</button>
+  <button role="tab" id="t-cara" aria-selected="false">2. Cara membuatnya</button>
+</nav>
+
+<!-- ================= PANEL MPI ================= -->
+<section id="p-mpi" class="stack" style="padding-top:8px">
+  <div class="bar" id="bar" hidden>
+    <button class="btn alt" id="btnHome" style="padding:8px 14px;font-size:14px">Beranda</button>
+    <div class="track"><div class="fill" id="fill"></div></div>
+    <div class="stars" id="stars">★ 0</div>
+  </div>
+
+  <!-- Layar 1: Beranda -->
+  <div id="s-home" class="hero">
+    <div class="eyebrow">PAI dan Budi Pekerti · Demo</div>
+    <h1>Kenali 10 Malaikat Allah</h1>
+    <p>Tonton lagunya, buka kartu tiap malaikat, lalu jawab 6 soal. Kamu bisa mengulang sampai paham.</p>
+    <button class="btn" id="goMateri">Mulai belajar</button>
+  </div>
+
+  <!-- Layar 2: Materi -->
+  <div id="s-materi" class="stack" hidden>
+    <h2>Ketuk kartu untuk melihat tugasnya</h2>
+    <p class="note" id="cnt">Dibuka: 0 dari 10</p>
+    <div class="cards" id="cards"></div>
+    <div><button class="btn" id="goLatihan" disabled>Buka semua kartu dulu</button></div>
+  </div>
+
+  <!-- Layar 3: Lagu (video) -->
+  <div id="s-lagu" class="stack" hidden>
+    <div class="eyebrow">Lagu</div>
+    <h2>Sepuluh Malaikat Allah</h2>
+    <p class="note">Tonton sampai habis dan ikut bernyanyi. Perhatikan nama dan tugas tiap malaikat.</p>
+    <video id="vid" class="vid" controls playsinline preload="metadata" poster="video/poster.jpg">
+      <source src="video/malaikat.mp4" type="video/mp4">
+      Video tidak bisa diputar di perangkat ini.
+    </video>
+    <p class="note" id="songMsg" role="status">Video: DoRamaAnImasi. Selesai menonton, kamu dapat +3 bintang.</p>
+    <div><button class="btn" id="goLatihan2">Lanjut ke kartu materi</button></div>
+  </div>
+
+  <!-- Layar 4: Latihan -->
+  <div id="s-latihan" class="stack" hidden>
+    <div class="eyebrow" id="qno"></div>
+    <h2 id="qtext"></h2>
+    <div class="opts" id="opts"></div>
+    <div class="fb" id="fb" hidden></div>
+    <div><button class="btn" id="next" hidden>Lanjut</button></div>
+  </div>
+
+  <!-- Layar 5: Hasil -->
+  <div id="s-hasil" class="stack" hidden>
+    <div class="eyebrow">Hasil kamu</div>
+    <div class="big" id="score"></div>
+    <h2 id="msg"></h2>
+    <p id="saran"></p>
+    <div class="row">
+      <button class="btn" id="again">Ulangi latihan</button>
+      <button class="btn alt" id="toMateri">Buka materi lagi</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PANEL CARA ================= -->
+<section id="p-cara" class="stack" style="padding-top:20px" hidden>
+  <div>
+    <div class="eyebrow">Demo alur</div>
+    <h1>Dari ide ke MPI, 5 langkah</h1>
+    <p class="note" style="margin-top:8px">MPI di tab sebelah dibuat persis dengan langkah di bawah. Topiknya contoh. Kelas dan mapel bisa diganti sesuai kebutuhan kamu.</p>
+  </div>
+
+  <details class="step" open>
+    <summary><span class="n">1</span>Tentukan tujuan</summary>
+    <div class="body">
+      <p>Isi lembar kerja dulu. Setiap baris nanti masuk ke kurung siku di master prompt.</p>
+      <div class="tw"><table>
+        <tr><th>Isi data</th><th>Contoh jawaban</th></tr>
+        <tr><td>Mapel</td><td>Pendidikan Agama Islam dan Budi Pekerti</td></tr>
+        <tr><td>Kelas / fase</td><td>VIII / Fase D</td></tr>
+        <tr><td>Materi / bab</td><td>Iman kepada malaikat Allah: 10 malaikat dan tugasnya</td></tr>
+        <tr><td>Tujuan (1 kalimat)</td><td>Setelah memakai MPI ini, siswa dapat menyebutkan 10 malaikat beserta tugasnya dengan benar minimal 5 dari 6 soal.</td></tr>
+        <tr><td>Jenis MPI</td><td>Kuis interaktif (paling aman untuk pemula)</td></tr>
+        <tr><td>Jumlah soal</td><td>6 soal</td></tr>
+      </table></div>
+      <p class="note">Cek tujuan: ada kata kerja terukur (menyebutkan), ada materi, ada ukuran (minimal 5 dari 6).</p>
+    </div>
+  </details>
+
+  <details class="step">
+    <summary><span class="n">2</span>Rancang alur layar</summary>
+    <div class="body">
+      <p>Gambar di kertas dulu, cukup lima layar.</p>
+      <div class="tw"><table>
+        <tr><th>Layar</th><th>Siswa melakukan</th><th>MPI merespons</th></tr>
+        <tr><td>Beranda</td><td>Membaca judul, klik Mulai belajar</td><td>Membuka layar lagu</td></tr>
+        <tr><td>Lagu</td><td>Menonton video lagu, ikut bernyanyi</td><td>Video diputar, bintang bertambah saat video selesai, tombol menuju kartu materi</td></tr>
+        <tr><td>Materi</td><td>Mengetuk 10 kartu malaikat</td><td>Tugas muncul, hitungan kartu bertambah, tombol latihan terbuka setelah 10 kartu</td></tr>
+        <tr><td>Latihan</td><td>Memilih jawaban untuk 6 soal</td><td>Benar atau salah beserta alasan, bintang bertambah</td></tr>
+        <tr><td>Hasil</td><td>Melihat skor</td><td>Pesan sesuai skor, tombol ulangi dan buka materi</td></tr>
+      </table></div>
+      <p class="note">Perhatikan satu hal: tombol latihan terkunci sampai kartu terbuka semua. Itu contoh "misi terbuka bertahap" seperti di Jelajah Nusantara.</p>
+    </div>
+  </details>
+
+  <details class="step">
+    <summary><span class="n">3</span>Buat dengan AI</summary>
+    <div class="body">
+      <p>Salin master prompt di bawah, tempel ke AI pilihan kamu (Claude, ChatGPT, Gemini). Bagian yang diganti: mapel, kelas, materi, tujuan. Materi ditempel dari buku agar AI tidak mengarang.</p>
+      <pre id="prompt">Buatkan MPI dalam satu file HTML.
+
+Mapel : Pendidikan Agama Islam dan Budi Pekerti
+Kelas : VIII
+Materi: Iman kepada malaikat Allah (materi lengkap saya tempel di bawah)
+Tujuan: Setelah memakai MPI ini, siswa dapat menyebutkan 10 malaikat beserta tugasnya dengan benar minimal 5 dari 6 soal.
+Jenis : kuis interaktif, 5 layar berurutan: Beranda, Lagu (video), Materi (kartu balik), Latihan 6 soal, Hasil
+Layar Lagu: putar video video/malaikat.mp4 dengan kontrol bawaan. Beri +3 bintang saat video selesai. Video berhenti jika siswa pindah layar.
+
+Gunakan hanya materi yang saya tempel.
+Latar putih, oranye + biru muda, Montserrat.
+Responsif di HP, semua tombol berfungsi.
+Setiap soal beri umpan balik benar/salah beserta alasannya.
+Akhiri dengan skor, saran belajar, dan tombol ulangi.
+
+MATERI:
+Jibril: menyampaikan wahyu kepada para nabi dan rasul.
+Mikail: membagikan rezeki dan menurunkan hujan.
+Israfil: meniup sangkakala pada hari kiamat.
+Izrail: mencabut nyawa.
+Munkar dan Nakir: bertanya kepada manusia di alam kubur.
+Raqib dan Atid: mencatat amal baik dan amal buruk.
+Malik: penjaga neraka.
+Ridwan: penjaga surga.</pre>
+      <div class="row"><button class="btn" id="copy">Salin prompt</button><span class="note" id="copyMsg" role="status"></span></div>
+      <p class="note">Hasilnya belum tentu sempurna. Itu normal, langkah 4 untuk memperbaikinya.</p>
+    </div>
+  </details>
+
+  <details class="step">
+    <summary><span class="n">4</span>Uji dan revisi</summary>
+    <div class="body">
+      <p>Coba MPI di tab sebelah sambil centang daftar ini. Jangan bilang MPI sudah jadi sebelum semuanya tercentang.</p>
+      <label class="chk"><input type="checkbox">Semua tombol berfungsi</label>
+      <label class="chk"><input type="checkbox">Materi dan kunci jawaban akurat</label>
+      <label class="chk"><input type="checkbox">Tampil rapi di HP dan laptop</label>
+      <label class="chk"><input type="checkbox">Teks besar dan kontras jelas</label>
+      <label class="chk"><input type="checkbox">Petunjuk mudah dipahami</label>
+      <label class="chk"><input type="checkbox">Sudah dicoba teman atau siswa</label>
+      <p><b>Contoh prompt revisi</b></p>
+      <pre>Tombol "Lanjut" di layar Latihan tidak berfungsi setelah soal ke-3. Perbaiki tanpa mengubah tampilan dan isi soal.</pre>
+      <p class="note">Aturan revisi: sebutkan layar, tombolnya, dan apa yang terjadi. Satu masalah per permintaan.</p>
+    </div>
+  </details>
+
+  <details class="step">
+    <summary><span class="n">5</span>Bagikan</summary>
+    <div class="body">
+      <div class="tw"><table>
+        <tr><th>Cara</th><th>Kapan dipakai</th></tr>
+        <tr><td>Tautan web (GitHub Pages atau Canva)</td><td>Siswa punya internet, tinggal klik tautan</td></tr>
+        <tr><td>File HTML (Drive atau flashdisk)</td><td>Internet terbatas, buka langsung di browser</td></tr>
+        <tr><td>Layar kelas (proyektor)</td><td>Dimainkan bersama, jawab lewat suara atau angkat tangan</td></tr>
+      </table></div>
+    </div>
+  </details>
+</section>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var DATA=[
+    {n:"Jibril",t:"Menyampaikan wahyu kepada para nabi dan rasul."},
+    {n:"Mikail",t:"Membagikan rezeki dan menurunkan hujan."},
+    {n:"Israfil",t:"Meniup sangkakala pada hari kiamat."},
+    {n:"Izrail",t:"Mencabut nyawa."},
+    {n:"Munkar",t:"Bertanya kepada manusia di alam kubur (bersama Nakir)."},
+    {n:"Nakir",t:"Bertanya kepada manusia di alam kubur (bersama Munkar)."},
+    {n:"Raqib",t:"Mencatat amal baik."},
+    {n:"Atid",t:"Mencatat amal buruk."},
+    {n:"Malik",t:"Menjaga neraka."},
+    {n:"Ridwan",t:"Menjaga surga."}
+  ];
+  var QS=[
+    {q:"Siapa malaikat yang bertugas menyampaikan wahyu kepada para nabi?",o:["Jibril","Mikail","Israfil","Izrail"],a:0,e:"Jibril menyampaikan wahyu kepada para nabi dan rasul."},
+    {q:"Malaikat Mikail bertugas...",o:["Mencabut nyawa","Membagikan rezeki dan menurunkan hujan","Menjaga surga","Mencatat amal"],a:1,e:"Mikail bertugas membagikan rezeki dan menurunkan hujan."},
+    {q:"Siapa yang meniup sangkakala pada hari kiamat?",o:["Malik","Ridwan","Israfil","Raqib"],a:2,e:"Israfil bertugas meniup sangkakala pada hari kiamat."},
+    {q:"Dua malaikat yang bertanya kepada manusia di alam kubur adalah...",o:["Raqib dan Atid","Munkar dan Nakir","Malik dan Ridwan","Jibril dan Mikail"],a:1,e:"Munkar dan Nakir bertanya kepada manusia di alam kubur."},
+    {q:"Raqib dan Atid bertugas...",o:["Menjaga surga dan neraka","Meniup sangkakala","Mencatat amal baik dan amal buruk","Mencabut nyawa"],a:2,e:"Raqib mencatat amal baik dan Atid mencatat amal buruk."},
+    {q:"Penjaga surga dan penjaga neraka secara berurutan adalah...",o:["Malik lalu Ridwan","Ridwan lalu Malik","Izrail lalu Israfil","Atid lalu Raqib"],a:1,e:"Ridwan menjaga surga, Malik menjaga neraka."}
+  ];
+  var screens=["home","materi","lagu","latihan","hasil"];
+  var opened={},qi=0,score=0,answered=false,order=[];
+
+  function show(name){
+    if(name!=="lagu")stopSong();
+    screens.forEach(function(s){$("s-"+s).hidden=(s!==name)});
+    $("bar").hidden=(name==="home");
+    window.scrollTo(0,0);
+  }
+  function stars(){$("stars").textContent="★ "+score}
+  function progress(pct){$("fill").style.width=pct+"%"}
+
+  // tabs
+  function tab(which){
+    var m=which==="mpi";
+    $("p-mpi").hidden=!m;$("p-cara").hidden=m;
+    $("t-mpi").setAttribute("aria-selected",m);$("t-cara").setAttribute("aria-selected",!m);
+    window.scrollTo(0,0);
+  }
+  $("t-mpi").onclick=function(){tab("mpi")};
+  $("t-cara").onclick=function(){tab("cara")};
+
+  // materi
+  function buildCards(){
+    var c=$("cards");c.innerHTML="";
+    DATA.forEach(function(d,i){
+      var b=document.createElement("button");b.className="card";b.type="button";
+      b.innerHTML='<span class="nm"></span><span class="hint">Ketuk untuk membuka</span>';
+      b.querySelector(".nm").textContent=d.n;
+      b.onclick=function(){
+        if(!opened[i]){opened[i]=true;score++;stars()}
+        b.classList.add("open");
+        b.querySelector(".hint").className="tugas";
+        b.querySelector(".tugas").textContent=d.t;
+        updateCount();
+      };
+      c.appendChild(b);
+    });
+    updateCount();
+  }
+  function updateCount(){
+    var n=Object.keys(opened).length;
+    $("cnt").textContent="Dibuka: "+n+" dari 10";
+    progress(10+n*4);
+    var b=$("goLatihan");
+    b.disabled=n<10;
+    b.textContent=n<10?"Buka semua kartu dulu":"Mulai latihan";
+  }
+
+  // latihan
+  function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+  function showQ(){
+    answered=false;
+    var q=QS[qi];
+    $("qno").textContent="Soal "+(qi+1)+" dari "+QS.length;
+    $("qtext").textContent=q.q;
+    $("fb").hidden=true;$("next").hidden=true;
+    $("next").textContent=qi===QS.length-1?"Lihat hasil":"Lanjut";
+    order=shuffle(q.o.map(function(_,i){return i}));
+    var box=$("opts");box.innerHTML="";
+    order.forEach(function(oi){
+      var b=document.createElement("button");b.className="opt";b.type="button";
+      b.textContent=q.o[oi];
+      b.onclick=function(){pick(oi,b)};
+      box.appendChild(b);
+    });
+    progress(50+Math.round(qi/QS.length*50));
+  }
+  function pick(oi,btn){
+    if(answered)return;answered=true;
+    var q=QS[qi],ok=oi===q.a;
+    var btns=$("opts").children;
+    for(var i=0;i<btns.length;i++){
+      btns[i].disabled=true;
+      if(order[i]===q.a)btns[i].classList.add("ok");
+    }
+    if(!ok)btn.classList.add("bad");
+    if(ok){score+=2;stars()}
+    sessionCorrect+=ok?1:0;
+    var fb=$("fb");fb.hidden=false;
+    fb.textContent=(ok?"Benar! ":"Belum tepat. ")+q.e;
+    $("next").hidden=false;$("next").focus();
+  }
+  var sessionCorrect=0;
+  $("next").onclick=function(){
+    if(qi<QS.length-1){qi++;showQ()}else{finish()}
+  };
+  function finish(){
+    progress(100);
+    var n=sessionCorrect;
+    $("score").textContent=n+" / "+QS.length;
+    if(n>=5){
+      $("msg").textContent="Tujuan tercapai. Kamu hafal tugas para malaikat.";
+      $("saran").textContent="Lanjutkan dengan menjelaskan ke temanmu, satu malaikat satu tugas.";
+    }else{
+      $("msg").textContent="Hampir. Targetnya minimal 5 dari 6 soal.";
+      $("saran").textContent="Buka materi lagi, fokus pada kartu yang tadi salah, lalu ulangi latihan.";
+    }
+    show("hasil");
+  }
+
+  // navigasi
+  $("goMateri").onclick=function(){show("lagu");progress(10)};
+  $("goLatihan2").onclick=function(){show("materi");updateCount()};
+  $("goLatihan").onclick=function(){qi=0;sessionCorrect=0;show("latihan");showQ()};
+  $("again").onclick=function(){qi=0;sessionCorrect=0;show("latihan");showQ()};
+  $("toMateri").onclick=function(){show("materi");updateCount()};
+  $("btnHome").onclick=function(){show("home")};
+
+  // salin prompt
+  $("copy").onclick=function(){
+    var txt=$("prompt").textContent,msg=$("copyMsg");
+    function fallback(){
+      var r=document.createRange();r.selectNodeContents($("prompt"));
+      var s=window.getSelection();s.removeAllRanges();s.addRange(r);
+      msg.textContent="Teks terpilih. Tekan Ctrl+C atau tahan lalu Salin.";
+    }
+    try{
+      navigator.clipboard.writeText(txt).then(function(){msg.textContent="Tersalin."},fallback);
+    }catch(e){fallback()}
+  };
+
+  // ===== lagu (video) =====
+  var vid=$("vid"),videoDone=false;
+  function stopSong(){try{vid.pause()}catch(e){}}
+  vid.addEventListener("ended",function(){
+    if(!videoDone){videoDone=true;score+=3;stars();$("songMsg").textContent="Video selesai. +3 bintang."}
+  });
+
+  buildCards();
+  show("home");
+})();
+</script>
+
+</body></html>
