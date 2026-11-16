@@ -83,6 +83,10 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;background:var(--bg);bor
 .chk input{width:20px;height:20px;margin-top:2px;accent-color:var(--orange);flex:none}
 .note{font-size:14px;color:var(--muted)}
 .vid{width:100%;max-width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;display:block}
+.hero .lbl{display:block;font-weight:600;font-size:14px;color:var(--sky-ink);margin-bottom:6px}
+.hero .inp{font:inherit;font-size:16px;width:100%;max-width:360px;padding:13px 14px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--fg);display:block;margin-bottom:14px}
+.hero .inp:focus-visible{outline:3px solid var(--orange);outline-offset:1px}
+.hero p.err{margin:-6px 0 12px;color:var(--bad);font-weight:600;font-size:14px}
 .lyr{display:flex;flex-direction:column;gap:6px}
 .lyr .sec{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--orange);margin-top:10px}
 .lyr .ln{padding:10px 14px;border-radius:10px;color:var(--muted);font-size:17px;transition:background .2s,color .2s}
@@ -110,6 +114,9 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;background:var(--bg);bor
     <div class="eyebrow">PAI dan Budi Pekerti · Demo</div>
     <h1>Kenali 10 Malaikat Allah</h1>
     <p>Tonton lagunya, buka kartu tiap malaikat, lalu jawab 6 soal. Kamu bisa mengulang sampai paham.</p>
+    <label class="lbl" for="nama">Nama kamu</label>
+    <input class="inp" id="nama" type="text" maxlength="30" autocomplete="off" placeholder="Ketik namamu di sini">
+    <p class="err" id="namaErr" role="alert" hidden>Isi namamu dulu ya.</p>
     <button class="btn" id="goMateri">Mulai belajar</button>
   </div>
 
@@ -125,7 +132,7 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;background:var(--bg);bor
   <div id="s-lagu" class="stack" hidden>
     <div class="eyebrow">Lagu</div>
     <h2>Sepuluh Malaikat Allah</h2>
-    <p class="note">Tonton sampai habis dan ikut bernyanyi. Perhatikan nama dan tugas tiap malaikat.</p>
+    <p class="note" id="hello">Tonton sampai habis dan ikut bernyanyi. Perhatikan nama dan tugas tiap malaikat.</p>
     <video id="vid" class="vid" controls playsinline preload="metadata" poster="poster.jpg">
       <source src="malaikat.mp4" type="video/mp4">
       Video tidak bisa diputar di perangkat ini.
@@ -145,7 +152,7 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;background:var(--bg);bor
 
   <!-- Layar 5: Hasil -->
   <div id="s-hasil" class="stack" hidden>
-    <div class="eyebrow">Hasil kamu</div>
+    <div class="eyebrow" id="hasilNama">Hasil kamu</div>
     <div class="big" id="score"></div>
     <h2 id="msg"></h2>
     <p id="saran"></p>
@@ -187,7 +194,7 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;background:var(--bg);bor
       <p>Gambar di kertas dulu, cukup lima layar.</p>
       <div class="tw"><table>
         <tr><th>Layar</th><th>Siswa melakukan</th><th>MPI merespons</th></tr>
-        <tr><td>Beranda</td><td>Membaca judul, klik Mulai belajar</td><td>Membuka layar lagu</td></tr>
+        <tr><td>Beranda</td><td>Mengetik nama, klik Mulai belajar</td><td>Meminta nama jika masih kosong, lalu menyapa dan membuka layar lagu</td></tr>
         <tr><td>Lagu</td><td>Menonton video lagu, ikut bernyanyi</td><td>Video diputar, bintang bertambah saat video selesai, tombol menuju kartu materi</td></tr>
         <tr><td>Materi</td><td>Mengetuk 10 kartu malaikat</td><td>Tugas muncul, hitungan kartu bertambah, tombol latihan terbuka setelah 10 kartu</td></tr>
         <tr><td>Latihan</td><td>Memilih jawaban untuk 6 soal</td><td>Benar atau salah beserta alasan, bintang bertambah</td></tr>
@@ -208,6 +215,7 @@ Kelas : VIII
 Materi: Iman kepada malaikat Allah (materi lengkap saya tempel di bawah)
 Tujuan: Setelah memakai MPI ini, siswa dapat menyebutkan 10 malaikat beserta tugasnya dengan benar minimal 5 dari 6 soal.
 Jenis : kuis interaktif, 5 layar berurutan: Beranda, Lagu (video), Materi (kartu balik), Latihan 6 soal, Hasil
+Layar Beranda: kolom nama siswa (wajib diisi, tombol Enter juga bisa). Nama dipakai untuk menyapa di layar Lagu dan di layar Hasil.
 Layar Lagu: putar video video/malaikat.mp4 dengan kontrol bawaan. Beri +3 bintang saat video selesai. Video berhenti jika siswa pindah layar.
 
 Gunakan hanya materi yang saya tempel.
@@ -374,18 +382,31 @@ Ridwan: penjaga surga.</pre>
     progress(100);
     var n=sessionCorrect;
     $("score").textContent=n+" / "+QS.length;
+    $("hasilNama").textContent="Hasil "+nama;
     if(n>=5){
-      $("msg").textContent="Tujuan tercapai. Kamu hafal tugas para malaikat.";
+      $("msg").textContent="Tujuan tercapai, "+nama+". Kamu hafal tugas para malaikat.";
       $("saran").textContent="Lanjutkan dengan menjelaskan ke temanmu, satu malaikat satu tugas.";
     }else{
-      $("msg").textContent="Hampir. Targetnya minimal 5 dari 6 soal.";
+      $("msg").textContent="Hampir, "+nama+". Targetnya minimal 5 dari 6 soal.";
       $("saran").textContent="Buka materi lagi, fokus pada kartu yang tadi salah, lalu ulangi latihan.";
     }
     show("hasil");
   }
 
   // navigasi
-  $("goMateri").onclick=function(){show("lagu");progress(10)};
+  var nama="";
+  try{var sv=localStorage.getItem("mpi-nama");if(sv)$("nama").value=sv}catch(e){}
+  function mulai(){
+    var v=$("nama").value.replace(/\s+/g," ").trim();
+    if(!v){$("namaErr").hidden=false;$("nama").focus();return}
+    $("namaErr").hidden=true;nama=v;
+    try{localStorage.setItem("mpi-nama",v)}catch(e){}
+    $("hello").textContent="Halo, "+nama+"! Tonton sampai habis dan ikut bernyanyi. Perhatikan nama dan tugas tiap malaikat.";
+    show("lagu");progress(10);
+  }
+  $("goMateri").onclick=mulai;
+  $("nama").addEventListener("keydown",function(e){if(e.key==="Enter")mulai()});
+  $("nama").addEventListener("input",function(){$("namaErr").hidden=true});
   $("goLatihan2").onclick=function(){show("materi");updateCount()};
   $("goLatihan").onclick=function(){qi=0;sessionCorrect=0;show("latihan");showQ()};
   $("again").onclick=function(){qi=0;sessionCorrect=0;show("latihan");showQ()};
